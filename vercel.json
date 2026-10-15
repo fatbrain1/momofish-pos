@@ -1,0 +1,4 @@
+
+
+{ "framework": "nextjs", "rewrites": [{ "source": "/fish", "destination": "/index.html" }, { "source": "/kosti", "destination": "/index.html" }] }
+
