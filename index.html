@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🐟 NILE-BAHRI POS - Final Fix</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--accent:#0ea5e9;--text:white;--border:#334155}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui}
+header{background:var(--card);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:2px solid var(--accent)}
+.logo{font-weight:900;font-size:19px}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:800}
+.btn-accent{background:var(--accent);color:white}
+.btn-dark{background:#334155;color:white;border:1px solid var(--border)}
+.btn-red{background:#991b1b;color:white}
+.sidebar{width:220px;background:var(--card);min-height:100vh;padding:12px;position:fixed;right:0;top:60px;border-left:1px solid var(--border)}
+.menu{padding:12px;border-radius:12px;cursor:pointer;margin:7px 0;transition:.2s}
+.menu.active,.menu:hover{background:var(--accent);color:white}
+.main{margin-right:240px;padding:18px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.card{background:var(--card);padding:18px;border-radius:16px;border:1px solid var(--border)}
+.table{background:var(--card);border-radius:16px;padding:16px;margin-top:14px;border:1px solid var(--border)}
+.itemsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:12px}
+.item{background:var(--bg);border:1px solid var(--border);padding:14px;border-radius:14px;cursor:pointer;text-align:center;transition:.2s}
+.item:hover{border-color:var(--accent);transform:scale(1.03)}
+input,select{padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);width:100%;margin:6px 0;box-sizing:border-box}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:right;font-size:13px}
+.badge{padding:4px 10px;border-radius:20px;font-size:11px}
+.cash{background:#14532d;color:#bbf7d0}.bankak{background:#1e3a8a;color:#bfdbfe}
+.magic-panel{position:fixed;left:15px;bottom:15px;background:var(--card);border:1px solid var(--border);padding:14px;border-radius:14px;width:220px;z-index:20;display:none}
+@media(max-width:900px){.sidebar{width:100%;position:relative;top:0;min-height:auto;display:flex;overflow:auto}.main{margin:0}.cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">🐟 NILE-BAHRI <span style="color:var(--accent)">FINAL</span> 🇸🇩</div>
+<div><button class="btn btn-dark" onclick="let m=document.getElementById('magic');m.style.display=m.style.display==='none'?'block':'none'">🎨 ثيم</button></div>
+</header>
+
+<div class="sidebar">
+<div class="menu active" onclick="showPage('dashboard',this)">📊 لوحة التحكم</div>
+<div class="menu" onclick="showPage('orders',this)">🧾 الطلبات POS</div>
+<div class="menu" onclick="showPage('stock',this)">📦 المخزون</div>
+<div class="menu" onclick="showPage('admin',this)">⚙️ الإدارة - إضافة/حذف</div>
+<div class="menu" onclick="showPage('reports',this)">📈 التقارير</div>
+<div style="margin-top:20px;padding:10px;background:var(--bg);border-radius:10px;font-size:11px;border:1px solid var(--border)">
+✅ إضافة شغالة<br>✅ حذف من الصلبات شغال<br>✅ تعديل سعر شغال<br>✅ طباعة فاتورة
+</div>
+</div>
+
+<div class="main">
+<div id="dashboard">
+<div class="cards">
+<div class="card"><small>مبيعات اليوم</small><h2 id="salesToday">0 ج.س</h2></div>
+<div class="card"><small>طلبات اليوم</small><h2 id="ordersToday">0</h2></div>
+<div class="card"><small>ربح اليوم</small><h2 id="profitToday">0 ج.س</h2></div>
+<div class="card"><small>أصناف</small><h2 id="itemsCount">0</h2></div>
+</div>
+<div class="table"><b>آخر الطلبات - مع زر طباعة</b><table><thead><tr><th>الفاتورة</th><th>المبلغ</th><th>الدفع</th><th>طباعة</th></tr></thead><tbody id="lastOrders"></tbody></table></div>
+</div>
+
+<div id="orders" style="display:none">
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+<div class="table"><b>الأصناف - دوس للبيع</b><div class="itemsGrid" id="itemsGrid"></div></div>
+<div class="table"><b>السلة</b><div id="cartList">فاضية</div><hr><div style="display:flex;justify-content:space-between"><b>الإجمالي</b><b id="total">0 ج.س</b></div><select id="payMethod"><option value="cash">كاش 💵</option><option value="bankak">بنكك 🏦</option></select><button class="btn btn-accent" style="width:100%;margin-top:10px;padding:14px" onclick="checkout()">كبس - بيع + 🖨️ فاتورة</button><button class="btn btn-dark" style="width:100%;margin-top:6px" onclick="clearCart()">إفراغ السلة</button></div>
+</div>
+</div>
+
+<div id="stock" style="display:none">
+<div class="table"><b>📦 المخزون</b><table><thead><tr><th>الصنف</th><th>كغ</th><th>سعر</th><th>تكلفة</th></tr></thead><tbody id="stockBody"></tbody></table></div>
+</div>
+
+<div id="admin" style="display:none">
+<div class="table">
+<h3 style="margin-top:0">⚙️ لوحة تحكم الإدارة - إضافة / حذف / تعديل</h3>
+<div style="background:var(--bg);padding:14px;border-radius:12px;border:1px solid var(--border);margin-bottom:14px">
+<b>➕ إضافة صنف جديد للصلبات:</b>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+<input id="a_name" placeholder="اسم الصنف (مثال: فول مدمس)">
+<input id="a_price" type="number" placeholder="سعر البيع ج.س">
+<input id="a_cost" type="number" placeholder="تكلفة الشراء ج.س">
+<input id="a_stock" type="number" placeholder="المخزون كغ">
+</div>
+<button class="btn btn-accent" onclick="addItem()" style="width:100%;margin-top:10px;padding:12px">✅ حفظ الصنف الجديد</button>
+<div id="addMsg" style="margin-top:8px;font-size:12px;color:#22c55e"></div>
+</div>
+
+<div style="background:var(--bg);padding:14px;border-radius:12px;border:1px solid var(--border)">
+<b>📋 قائمة الأصناف - تعديل وحذف من الصلبات:</b>
+<div id="adminList" style="margin-top:12px"></div>
+</div>
+</div>
+</div>
+
+<div id="reports" style="display:none">
+<div class="table"><b>📈 التقارير</b><table><thead><tr><th>اليوم</th><th>إيراد</th><th>ربح</th><th>طلبات</th></tr></thead><tbody id="reportBody"></tbody></table><button class="btn btn-dark" onclick="window.print()">🖨️ طباعة التقرير</button></div>
+</div>
+</div>
+
+<div id="magic" class="magic-panel">
+<b>🎨 ثيمات</b><br><small>ما بغطي المخزون تاني</small>
+<div style="margin-top:10px">
+<button class="btn btn-dark" style="width:100%;margin-top:5px" onclick="setTheme('#0f172a','#1e293b')">🌙 أمدرمان</button>
+<button class="btn btn-dark" style="width:100%;margin-top:5px" onclick="setTheme('#431407','#7c2d12')">🌅 مشوي</button>
+<button class="btn btn-dark" style="width:100%;margin-top:5px" onclick="document.getElementById('magic').style.display='none'">❌ إغلاق</button>
+</div>
+</div>
+
+<script>
+// بيانات افتراضية - جنيه سوداني + عصاير
+const DEFAULT_ITEMS=[
+{name:'بلطي نيلي',price:8000,cost:3000,stock:100},
+{name:'عجل سوداني',price:12000,cost:8000,stock:50},
+{name:'قرقور',price:15000,cost:9000,stock:30},
+{name:'كبروس',price:10000,cost:6000,stock:40},
+{name:'بياض',price:18000,cost:11000,stock:20},
+{name:'أقاشي نيلي',price:7000,cost:3500,stock:50},
+{name:'هامور',price:14000,cost:8000,stock:30},
+{name:'شعري',price:9000,cost:5000,stock:30},
+{name:'ربيان',price:20000,cost:14000,stock:20},
+{name:'عصير ليمون 🍋',price:1500,cost:400,stock:100},
+{name:'كركدي 🥤',price:1500,cost:300,stock:100},
+{name:'تبلدي',price:2000,cost:500,stock:80},
+{name:'عرديب',price:2000,cost:500,stock:80},
+{name:'منقة 🥭',price:2500,cost:800,stock:60},
+{name:'شاي أحمر',price:800,cost:150,stock:200},
+{name:'جبنة ☕',price:1000,cost:200,stock:200},
+];
+
+let items = JSON.parse(localStorage.getItem('nile_final_items')||'null') || DEFAULT_ITEMS;
+let cart = [];
+let sales = JSON.parse(localStorage.getItem('nile_final_sales')||'[]');
+
+function showPage(id,el){
+document.querySelectorAll('.main > div').forEach(d=>d.style.display='none');
+document.getElementById(id).style.display='block';
+document.querySelectorAll('.menu').forEach(m=>m.classList.remove('active'));
+if(el) el.classList.add('active');
+renderAll();
+}
+
+function renderAll(){
+renderItems();
+renderCart();
+renderDashboard();
+renderStock();
+renderAdminList();
+renderReports();
+document.getElementById('itemsCount').innerText=items.length;
+}
+
+function renderItems(){
+const grid=document.getElementById('itemsGrid');
+if(!grid) return;
+grid.innerHTML='';
+items.forEach((it,idx)=>{
+let div=document.createElement('div');
+div.className='item';
+div.innerHTML=`<b>${it.name}</b><br><small>${it.stock} كغ</small><br><span style="color:var(--accent);font-weight:900">${it.price.toLocaleString()} ج.س</span>`;
+div.onclick=()=>addToCart(idx);
+grid.appendChild(div);
+});
+}
+
+function addToCart(idx){
+let found=cart.find(c=>c.idx===idx);
+if(found){found.qty++;} else {cart.push({idx,qty:1,name:items[idx].name,price:items[idx].price,cost:items[idx].cost});}
+renderCart();
+}
+
+function renderCart(){
+let el=document.getElementById('cartList');
+if(!el) return;
+if(cart.length===0){el.innerHTML='فاضية';}
+else{el.innerHTML=cart.map((c,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0"><span>${c.name} x${c.qty}</span><span>${(c.price*c.qty).toLocaleString()} <button onclick="removeFromCart(${i})" style="background:#991b1b;color:white;border:0;border-radius:4px;padding:0 6px;cursor:pointer">x</button></span></div>`).join('');}
+document.getElementById('total').innerText=cart.reduce((s,c)=>s+c.price*c.qty,0).toLocaleString()+' ج.س';
+}
+
+function removeFromCart(i){cart.splice(i,1);renderCart();}
+function clearCart(){cart=[];renderCart();}
+
+function checkout(){
+if(cart.length===0) return alert('السلة فاضية');
+let total=cart.reduce((s,c)=>s+c.price*c.qty,0);
+let profit=cart.reduce((s,c)=>s+(c.price-c.cost)*c.qty,0);
+let method=document.getElementById('payMethod').value;
+let invId='NB-'+Date.now().toString().slice(-6);
+let record={id:invId,total,profit,method,day:new Date().toLocaleDateString('ar-EG'),time:new Date().toLocaleString(),items:JSON.parse(JSON.stringify(cart))};
+sales.unshift(record);
+cart.forEach(c=>{items[c.idx].stock-=c.qty;});
+localStorage.setItem('nile_final_items',JSON.stringify(items));
+localStorage.setItem('nile_final_sales',JSON.stringify(sales));
+printInvoice(record);
+cart=[];
+renderAll();
+}
+
+function printInvoice(rec){
+let win=window.open('','','width=320,height=600');
+win.document.write(`<html><head><title>فاتورة ${rec.id}</title></head><body style="width:280px;font-family:monospace;padding:10px;background:white;color:black">
+<center><h3 style="margin:0">🐟 NILE-BAHRI</h3><small>فرع أمدرمان<br>${rec.id}<br>${rec.time}<br>الدفع: ${rec.method}<br></small><hr></center>
+${rec.items.map(c=>`<div style="display:flex;justify-content:space-between"><span>${c.name} x${c.qty}</span><span>${(c.price*c.qty).toLocaleString()} ج.س</span></div>`).join('')}
+<hr><div style="display:flex;justify-content:space-between;font-weight:bold;font-size:16px"><span>الإجمالي</span><span>${rec.total.toLocaleString()} ج.س</span></div>
+<center><hr><small>شكراً لزيارتكم - كبس مقفلة 🔒</small></center>
+</body></html>`);
+win.document.close();
+win.focus();
+win.print();
+win.close();
+}
+
+function renderDashboard(){
+let today=new Date().toLocaleDateString('ar-EG');
+let todaySales=sales.filter(s=>s.day===today);
+document.getElementById('salesToday').innerText=todaySales.reduce((a,b)=>a+b.total,0).toLocaleString()+' ج.س';
+document.getElementById('ordersToday').innerText=todaySales.length;
+document.getElementById('profitToday').innerText=todaySales.reduce((a,b)=>a+b.profit,0).toLocaleString()+' ج.س';
+document.getElementById('lastOrders').innerHTML=sales.slice(0,10).map(s=>`<tr><td>${s.id}</td><td>${s.total.toLocaleString()}</td><td><span class="badge ${s.method}">${s.method}</span></td><td><button class="btn btn-dark" style="padding:3px 8px;font-size:11px" onclick="printInvoice(sales.find(x=>x.id==='${s.id}'))">🖨️</button></td></tr>`).join('')||'<tr><td colspan=4>لا طلبات</td></tr>';
+}
+
+function renderStock(){
+document.getElementById('stockBody').innerHTML=items.map((it,i)=>`<tr><td>${it.name}</td><td>${it.stock}</td><td>${it.price.toLocaleString()}</td><td>${it.cost.toLocaleString()}</td></tr>`).join('');
+}
+
+function renderAdminList(){
+document.getElementById('adminList').innerHTML=items.map((it,i)=>`
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+<div style="flex:1"><b>${it.name}</b><br><small style="color:#94a3b8">سعر ${it.price.toLocaleString()} ج.س | تكلفة ${it.cost.toLocaleString()} | مخزون ${it.stock} كغ</small></div>
+<div style="display:flex;gap:6px">
+<button class="btn btn-dark" onclick="editItem(${i})" style="padding:6px 10px">✏️ تعديل</button>
+<button class="btn btn-red" onclick="deleteItem(${i})" style="padding:6px 10px">🗑️ حذف من الصلبات</button>
+</div>
+</div>`).join('');
+}
+
+function addItem(){
+let name=document.getElementById('a_name').value.trim();
+let price=parseInt(document.getElementById('a_price').value);
+let cost=parseInt(document.getElementById('a_cost').value)||0;
+let stock=parseInt(document.getElementById('a_stock').value)||0;
+let msgEl=document.getElementById('addMsg');
+if(!name){msgEl.innerText='❌ دخل اسم الصنف'; return;}
+if(!price||price<=0){msgEl.innerText='❌ دخل سعر صحيح'; return;}
+items.push({name,price,cost,stock});
+localStorage.setItem('nile_final_items',JSON.stringify(items));
+document.getElementById('a_name').value='';
+document.getElementById('a_price').value='';
+document.getElementById('a_cost').value='';
+document.getElementById('a_stock').value='';
+msgEl.innerText=`✅ تمت إضافة ${name} - ${price.toLocaleString()} ج.س`;
+setTimeout(()=>msgEl.innerText='',3000);
+renderAll();
+}
+
+function editItem(i){
+let newName=prompt(`اسم الصنف:`,items[i].name);
+if(newName===null) return;
+let newPrice=prompt(`سعر البيع الجديد لـ ${newName} (ج.س):`,items[i].price);
+if(newPrice===null) return;
+let newCost=prompt(`تكلفة الشراء (ج.س):`,items[i].cost);
+if(newCost===null) return;
+let newStock=prompt(`المخزون كغ:`,items[i].stock);
+if(newStock===null) return;
+if(newName.trim()!=='') items[i].name=newName.trim();
+if(!isNaN(parseInt(newPrice))) items[i].price=parseInt(newPrice);
+if(!isNaN(parseInt(newCost))) items[i].cost=parseInt(newCost);
+if(!isNaN(parseInt(newStock))) items[i].stock=parseInt(newStock);
+localStorage.setItem('nile_final_items',JSON.stringify(items));
+renderAll();
+}
+
+function deleteItem(i){
+if(!confirm(`⚠️ متأكد تحذف ${items[i].name} من الصلبات نهائي؟\nالصنف هيختفي من كل القوائم.`)) return;
+items.splice(i,1);
+localStorage.setItem('nile_final_items',JSON.stringify(items));
+renderAll();
+alert('تم الحذف من الصلبات 🗑️');
+}
+
+function renderReports(){
+let grouped={};
+sales.forEach(s=>{
+if(!grouped[s.day]) grouped[s.day]={rev:0,profit:0,orders:0};
+grouped[s.day].rev+=s.total;
+grouped[s.day].profit+=s.profit;
+grouped[s.day].orders++;
+});
+document.getElementById('reportBody').innerHTML=Object.entries(grouped).map(([day,v])=>`<tr><td>${day}</td><td>${v.rev.toLocaleString()} ج.س</td><td>${v.profit.toLocaleString()} ج.س</td><td>${v.orders}</td></tr>`).join('')||'<tr><td colspan=4>لا بيانات</td></tr>';
+}
+
+function setTheme(bg,card){
+document.documentElement.style.setProperty('--bg',bg);
+document.documentElement.style.setProperty('--card',card);
+}
+
+renderAll();
+</script>
+</body>
+</html>
